@@ -1,42 +1,30 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.database import SessionLocal  # DB session
-from sqlalchemy import text
+from app.routers import auth, users
+from app.routers import projects as projects_router
 
-app = FastAPI()
+app = FastAPI(title="Project Team Management")
 
-# ✅ Allow frontend domains to call backend
 origins = [
-    "http://localhost:5173",                 # Local dev (Vite default port)
-    "https://project-team-frontend.vercel.app"  # Deployed frontend
+    "http://localhost:5173",
+    "https://project-team-frontend.vercel.app"
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,        # restrict access only to your frontends
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ✅ Root route (basic check)
+# Root
 @app.get("/")
-def read_root():
+def root():
     return {"message": "Backend is running!"}
 
-# ✅ Test DB connectivity
-@app.get("/test-connection")
-def test_connection():
-    try:
-        db = SessionLocal()
-        db.execute(text("SELECT 1"))
-        return {"status": "Backend + DB connected!"}
-    except Exception as e:
-        return {"status": "Error", "details": str(e)}
-    finally:
-        db.close()
+# Include routers
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(projects_router.router)
 
-# ✅ Route for frontend test
-@app.get("/api/hello")
-def hello_from_backend():
-    return {"message": "Hello from Backend + DB!"}
