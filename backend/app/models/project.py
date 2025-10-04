@@ -1,12 +1,11 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Enum
 from sqlalchemy.orm import relationship
-from .base import Base
+from app.core.database import Base
 import enum
 
 class ProjectStatus(str, enum.Enum):
     active = "active"
     inactive = "inactive"
-    completed = "completed"
 
 class Project(Base):
     __tablename__ = "projects"
@@ -14,13 +13,12 @@ class Project(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
-
-    admin_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    owner_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    status = Column(Enum(ProjectStatus), default=ProjectStatus.active, nullable=False)
+    admin_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    status = Column(Enum(ProjectStatus), default=ProjectStatus.active)
 
     # Relationships
-    admin = relationship("User", back_populates="projects_admined", foreign_keys=[admin_id])
-    owner = relationship("User", back_populates="projects_owned", foreign_keys=[owner_id])
-    teams = relationship("Team", back_populates="project", cascade="all, delete-orphan")
-    tasks = relationship("Task", back_populates="project", cascade="all, delete-orphan")
+    admin = relationship("User", foreign_keys=[admin_id], back_populates="projects_admin")
+    owner = relationship("User", foreign_keys=[owner_id], back_populates="projects_owned")
+    teams = relationship("Team", back_populates="project")
+    tasks = relationship("Task", back_populates="project")

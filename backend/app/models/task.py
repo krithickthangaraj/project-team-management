@@ -1,11 +1,11 @@
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, ForeignKey, Enum
 from sqlalchemy.orm import relationship
-from .base import Base
+from app.core.database import Base
 import enum
 
 class TaskStatus(str, enum.Enum):
-    in_progress = "in_progress"
     incomplete = "incomplete"
+    in_progress = "in_progress"
     completed = "completed"
 
 class Task(Base):
@@ -13,12 +13,10 @@ class Task(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
-    description = Column(Text, nullable=True)
+    description = Column(String, nullable=True)
     status = Column(Enum(TaskStatus), default=TaskStatus.in_progress)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    assigned_to_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
-    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
-    assigned_to_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-
-    # Relationships
     project = relationship("Project", back_populates="tasks")
     assigned_to = relationship("User", back_populates="tasks_assigned")

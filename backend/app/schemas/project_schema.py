@@ -1,18 +1,18 @@
 from pydantic import BaseModel
 from typing import Optional
-from enum import Enum
-
-
-class ProjectStatus(str, Enum):
-    active = "active"
-    inactive = "inactive"
-    completed = "completed"
+from app.models.project import ProjectStatus
 
 
 class ProjectCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    admin_id: Optional[int] = None  # default to current user if not provided
+    owner_id: int
+
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[ProjectStatus] = None
     owner_id: Optional[int] = None
 
 
@@ -20,9 +20,9 @@ class ProjectResponse(BaseModel):
     id: int
     name: str
     description: Optional[str]
-    admin_id: int
-    owner_id: Optional[int]
     status: ProjectStatus
+    admin_id: int
+    owner_id: int
 
     class Config:
-        from_attributes = True  # allows ORM -> Pydantic conversion
+        from_attributes = True

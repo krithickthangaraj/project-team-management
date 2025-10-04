@@ -1,4 +1,5 @@
 from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 from dotenv import load_dotenv
@@ -7,14 +8,19 @@ load_dotenv()
 
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
+# Engine
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    connect_args={"sslmode": "require"}  # Required for Supabase
+    connect_args={"sslmode": "require"}  # For Supabase/Postgres
 )
 
+# Session
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Dependency to get DB session
+# Base for models
+Base = declarative_base()
+
+# Dependency
 def get_db():
     db = SessionLocal()
     try:

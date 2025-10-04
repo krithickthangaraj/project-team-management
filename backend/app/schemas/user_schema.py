@@ -1,10 +1,12 @@
 from pydantic import BaseModel, EmailStr
 
+
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str
-    role: str = "member"
+    role: str = "member"  # default role
+
 
 class UserResponse(BaseModel):
     id: int
@@ -14,8 +16,14 @@ class UserResponse(BaseModel):
     is_active: bool
 
     class Config:
-      from_attributes = True
+        from_attributes = True
+
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str

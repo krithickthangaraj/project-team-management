@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, users
+from app.routers import auth, users , tasks ,teams
 from app.routers import projects as projects_router
 
 app = FastAPI(title="Project Team Management")
@@ -27,4 +27,8 @@ def root():
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(projects_router.router)
+app.include_router(tasks.router)
+app.include_router(teams.router)
+
+
 
