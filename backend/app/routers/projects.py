@@ -1,7 +1,7 @@
-from typing import List, Optional
-
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+import asyncio
 
 from app.core.database import get_db
 from app.models.project import Project, ProjectStatus
@@ -10,9 +10,9 @@ from app.models.team import Team, team_members
 from app.models.user import User
 from app.schemas.project_schema import ProjectCreate, ProjectUpdate, ProjectResponse
 from app.utils.role_checker import get_current_user, require_role
+from app.services.websocket_manager import manager
 
 router = APIRouter(prefix="/projects", tags=["projects"])
-
 
 # ---------------- CREATE PROJECT ----------------
 @router.post(
@@ -42,6 +42,15 @@ def create_project(
     db.add(project)
     db.commit()
     db.refresh(project)
+
+    # WebSocket broadcast: project created
+    asyncio.create_task(manager.broadcast(project.id, {
+        "event": "project_created",
+        "project_id": project.id,
+        "name": project.name,
+        "status": project.status
+    }))
+
     return project
 
 
@@ -117,7 +126,6 @@ def update_project(
         project.description = payload.description
     if payload.status is not None:
         project.status = payload.status
-        # If project is inactive, mark all associated tasks as incomplete
         if payload.status == ProjectStatus.inactive:
             tasks: List[Task] = db.query(Task).filter(Task.project_id == project.id).all()
             for t in tasks:
@@ -131,6 +139,15 @@ def update_project(
 
     db.commit()
     db.refresh(project)
+
+    # WebSocket broadcast: project updated
+    asyncio.create_task(manager.broadcast(project.id, {
+        "event": "project_updated",
+        "project_id": project.id,
+        "name": project.name,
+        "status": project.status
+    }))
+
     return project
 
 
@@ -155,4 +172,11 @@ def delete_project(
 
     db.delete(project)
     db.commit()
+
+    # WebSocket broadcast: project deleted
+    asyncio.create_task(manager.broadcast(project.id, {
+        "event": "project_deleted",
+        "project_id": project.id
+    }))
+
     return {"detail": "Project deleted successfully"}
