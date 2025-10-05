@@ -7,7 +7,6 @@ class TaskStatus(str, Enum):
     incomplete = "incomplete"
     completed = "completed"
 
-    
 class TaskCreate(BaseModel):
     title: str
     description: Optional[str] = None
@@ -30,8 +29,8 @@ class TaskResponse(BaseModel):
     assigned_to_id: Optional[int]
 
     class Config:
+        orm_mode = True
         from_attributes = True
 
-# --- NEW: For PATCH /tasks/{task_id}/status ---
 class TaskStatusUpdate(BaseModel):
     status: TaskStatus
