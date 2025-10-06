@@ -17,15 +17,17 @@ def register(user: UserCreate, db: Session = Depends(get_db)) -> User:
     Register a new user.
     Role defaults to 'member' if not provided.
     """
-    if db.query(User).filter(User.email == user.email).first():
+    existing_user = db.query(User).filter(User.email == user.email).first()
+    if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
     new_user = User(
         name=user.name,
         email=user.email,
         hashed_password=hash_password(user.password),
-        role=user.role,
+        role=user.role or "member",
     )
+
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -36,11 +38,22 @@ def register(user: UserCreate, db: Session = Depends(get_db)) -> User:
 @router.post("/login", status_code=status.HTTP_200_OK)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)) -> dict:
     """
-    Login user and return JWT access token.
+    Login user and return JWT access token + user info.
     """
     db_user = db.query(User).filter(User.email == form_data.username).first()
+
     if not db_user or not verify_password(form_data.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = create_access_token({"sub": db_user.email, "role": db_user.role})
-    return {"access_token": token, "token_type": "bearer"}
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": db_user.id,
+            "name": db_user.name,
+            "email": db_user.email,
+            "role": db_user.role,
+        },
+    }

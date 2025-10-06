@@ -29,7 +29,6 @@ class TaskResponse(BaseModel):
     assigned_to_id: Optional[int]
 
     class Config:
-        orm_mode = True
         from_attributes = True
 
 class TaskStatusUpdate(BaseModel):

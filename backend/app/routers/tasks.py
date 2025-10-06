@@ -1,5 +1,6 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+# src/routers/tasks.py
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
@@ -15,8 +16,11 @@ from app.services.websocket_manager import manager
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
-# ---------------- Helper Function ----------------
+# ---------------- Helper Functions ----------------
 def verify_permission(user: User, project: Project, action: str):
+    """
+    Verify if a user has permission to perform an action on a project.
+    """
     if user.role == "admin":
         return True
     if project.owner_id == user.id:
@@ -26,9 +30,32 @@ def verify_permission(user: User, project: Project, action: str):
     raise HTTPException(status_code=403, detail="Not authorized for this action")
 
 
+def gather_recipients(db: Session, task: Task):
+    """
+    Collect all emails that should be notified about a task.
+    """
+    recipients = set()
+    assigned_user = db.query(User).filter(User.id == task.assigned_to_id).first()
+    project = db.query(Project).filter(Project.id == task.project_id).first()
+    owner = db.query(User).filter(User.id == project.owner_id).first()
+    admins = db.query(User).filter(User.role == "admin").all()
+
+    if assigned_user and assigned_user.email:
+        recipients.add(assigned_user.email)
+    if owner and owner.email:
+        recipients.add(owner.email)
+    recipients.update([a.email for a in admins if a.email])
+
+    return recipients
+
 # ---------------- CREATE TASK ----------------
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
-async def create_task(payload: TaskCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def create_task(
+    payload: TaskCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     project = db.query(Project).filter(Project.id == payload.project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -46,20 +73,11 @@ async def create_task(payload: TaskCreate, db: Session = Depends(get_db), curren
     db.commit()
     db.refresh(task)
 
-    # Email Notifications
-    recipients = []
-    assigned_user = db.query(User).filter(User.id == task.assigned_to_id).first()
-    owner = db.query(User).filter(User.id == project.owner_id).first()
-    admins = db.query(User).filter(User.role == "admin").all()
-
-    if assigned_user and assigned_user.email:
-        recipients.append(assigned_user.email)
-    if owner and owner.email:
-        recipients.append(owner.email)
-    recipients.extend([a.email for a in admins if a.email])
-
-    for r in set(recipients):
-        send_task_assigned_email(
+    # Send emails asynchronously
+    recipients = gather_recipients(db, task)
+    for r in recipients:
+        background_tasks.add_task(
+            send_task_assigned_email,
             member_email=r,
             project_name=project.name,
             task_title=task.title,
@@ -83,13 +101,8 @@ async def get_all_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Get all tasks accessible to the current user.
-    No filters applied (status, assigned_to_id, project_id removed).
-    """
     query = db.query(Task)
 
-    # Role-based filtering
     if current_user.role == "owner":
         query = query.join(Project).filter(Project.owner_id == current_user.id)
     elif current_user.role == "member":
@@ -100,8 +113,6 @@ async def get_all_tasks(
 
     return query.all()
 
-
-
 # ---------------- GET SINGLE TASK ----------------
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -109,6 +120,7 @@ async def get_task(task_id: int, db: Session = Depends(get_db), current_user: Us
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
+    # Role-based access
     if current_user.role == "admin":
         return task
     if current_user.role == "owner" and task.project.owner_id == current_user.id:
@@ -126,10 +138,15 @@ async def get_task(task_id: int, db: Session = Depends(get_db), current_user: Us
 
     raise HTTPException(status_code=403, detail="Not authorized to view this task")
 
-
 # ---------------- UPDATE TASK ----------------
 @router.put("/{task_id}", response_model=TaskResponse)
-async def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def update_task(
+    task_id: int,
+    payload: TaskUpdate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -142,20 +159,11 @@ async def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(g
     db.commit()
     db.refresh(task)
 
-    # Email Notifications on update
-    recipients = []
-    assigned_user = db.query(User).filter(User.id == task.assigned_to_id).first()
-    owner = db.query(User).filter(User.id == task.project.owner_id).first()
-    admins = db.query(User).filter(User.role == "admin").all()
-
-    if assigned_user and assigned_user.email:
-        recipients.append(assigned_user.email)
-    if owner and owner.email:
-        recipients.append(owner.email)
-    recipients.extend([a.email for a in admins if a.email])
-
-    for r in set(recipients):
-        send_task_status_update_email(
+    # Emails
+    recipients = gather_recipients(db, task)
+    for r in recipients:
+        background_tasks.add_task(
+            send_task_status_update_email,
             recipients=[r],
             project_name=task.project.name,
             task_title=task.title,
@@ -163,7 +171,7 @@ async def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(g
             updated_by=current_user.name
         )
 
-    # WebSocket Broadcast
+    # WebSocket
     await manager.broadcast(task.project_id, {
         "event": "task_updated",
         "task_id": task.id,
@@ -174,10 +182,13 @@ async def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(g
 
     return task
 
-
 # ---------------- DELETE TASK ----------------
 @router.delete("/{task_id}", status_code=status.HTTP_200_OK)
-async def delete_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def delete_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -194,10 +205,15 @@ async def delete_task(task_id: int, db: Session = Depends(get_db), current_user:
 
     return {"detail": "Task deleted successfully"}
 
-
 # ---------------- UPDATE TASK STATUS ----------------
 @router.patch("/{task_id}/status", response_model=TaskResponse)
-async def update_task_status(task_id: int, payload: TaskStatusUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def update_task_status(
+    task_id: int,
+    payload: TaskStatusUpdate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -209,19 +225,10 @@ async def update_task_status(task_id: int, payload: TaskStatusUpdate, db: Sessio
     db.commit()
     db.refresh(task)
 
-    recipients = []
-    assigned_user = db.query(User).filter(User.id == task.assigned_to_id).first()
-    owner = db.query(User).filter(User.id == task.project.owner_id).first()
-    admins = db.query(User).filter(User.role == "admin").all()
-
-    if assigned_user and assigned_user.email:
-        recipients.append(assigned_user.email)
-    if owner and owner.email:
-        recipients.append(owner.email)
-    recipients.extend([a.email for a in admins if a.email])
-
-    for r in set(recipients):
-        send_task_status_update_email(
+    recipients = gather_recipients(db, task)
+    for r in recipients:
+        background_tasks.add_task(
+            send_task_status_update_email,
             recipients=[r],
             project_name=task.project.name,
             task_title=task.title,
