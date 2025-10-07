@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Routers
 from app.routers import auth, users, tasks, teams
 from app.routers import projects as projects_router
+from app.routers import admin as admin_router
 
 # WebSocket manager
 from app.services.websocket_manager import manager
@@ -35,6 +36,7 @@ app.include_router(users.router)
 app.include_router(projects_router.router)
 app.include_router(tasks.router)
 app.include_router(teams.router)
+app.include_router(admin_router.router)
 
 # ----------------- WEBSOCKET -----------------
 @app.websocket("/ws/projects/{project_id}")

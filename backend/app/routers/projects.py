@@ -21,7 +21,7 @@ router = APIRouter(prefix="/projects", tags=["projects"])
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(require_role("admin"))],
 )
-def create_project(
+async def create_project(
     payload: ProjectCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -44,12 +44,12 @@ def create_project(
     db.refresh(project)
 
     # WebSocket broadcast: project created
-    asyncio.create_task(manager.broadcast(project.id, {
+    await manager.broadcast(project.id, {
         "event": "project_created",
         "project_id": project.id,
         "name": project.name,
         "status": project.status
-    }))
+    })
 
     return project
 
@@ -106,7 +106,7 @@ def get_project(
 
 # ---------------- UPDATE PROJECT ----------------
 @router.put("/{project_id}", response_model=ProjectResponse)
-def update_project(
+async def update_project(
     project_id: int,
     payload: ProjectUpdate,
     db: Session = Depends(get_db),
@@ -141,19 +141,19 @@ def update_project(
     db.refresh(project)
 
     # WebSocket broadcast: project updated
-    asyncio.create_task(manager.broadcast(project.id, {
+    await manager.broadcast(project.id, {
         "event": "project_updated",
         "project_id": project.id,
         "name": project.name,
         "status": project.status
-    }))
+    })
 
     return project
 
 
 # ---------------- DELETE PROJECT ----------------
 @router.delete("/{project_id}", status_code=status.HTTP_200_OK)
-def delete_project(
+async def delete_project(
     project_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -174,9 +174,9 @@ def delete_project(
     db.commit()
 
     # WebSocket broadcast: project deleted
-    asyncio.create_task(manager.broadcast(project.id, {
+    await manager.broadcast(project.id, {
         "event": "project_deleted",
         "project_id": project.id
-    }))
+    })
 
     return {"detail": "Project deleted successfully"}
