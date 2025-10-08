@@ -21,9 +21,12 @@ default_origins = [
 extra_origins = os.getenv("CORS_ALLOW_ORIGINS", "").split(",") if os.getenv("CORS_ALLOW_ORIGINS") else []
 allow_origins = [o.strip() for o in (default_origins + extra_origins) if o.strip()]
 
+allow_origin_regex = os.getenv("CORS_ALLOW_ORIGIN_REGEX")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
+    allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
