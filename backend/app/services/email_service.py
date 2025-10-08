@@ -28,6 +28,10 @@ def send_email(subject: str, recipients: list[str], body: str):
     """
     Send an email through MailHog (dev) or Gmail SMTP (prod).
     """
+    print(f"[EMAIL DEBUG] Attempting to send email to {recipients}")
+    print(f"[EMAIL DEBUG] Environment: {ENVIRONMENT}")
+    print(f"[EMAIL DEBUG] SMTP_USER: {SMTP_USER if ENVIRONMENT != 'dev' else 'N/A'}")
+    print(f"[EMAIL DEBUG] SMTP_PASS set: {'Yes' if SMTP_PASS else 'No'}")
     try:
         msg = MIMEMultipart()
         msg["From"] = DEFAULT_FROM_EMAIL
@@ -63,6 +67,7 @@ def send_task_assigned_email(member_email: str, project_name: str, task_title: s
     """
     Notify user when a new task is assigned.
     """
+    print(f"[EMAIL DEBUG] send_task_assigned_email called for {member_email}")
     subject = f"New Task Assigned in {project_name}"
     body = f"""
     <h3>New Task Assigned</h3>
