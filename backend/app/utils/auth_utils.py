@@ -10,19 +10,22 @@ JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "supersecretkey")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
-# bcrypt max bytes limit
+# bcrypt max bytes limit (operate on bytes, not characters)
 MAX_BCRYPT_BYTES = 72
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Password hashing
 def hash_password(password: str) -> str:
-    truncated = password[:MAX_BCRYPT_BYTES]  # truncate to 72 bytes
-    return pwd_context.hash(truncated)
+    # ensure truncation is by bytes, not characters (handles multi-byte chars)
+    password_bytes = password.encode("utf-8")
+    truncated_bytes = password_bytes[:MAX_BCRYPT_BYTES]
+    return pwd_context.hash(truncated_bytes)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    truncated = plain_password[:MAX_BCRYPT_BYTES]  # truncate before verify
-    return pwd_context.verify(truncated, hashed_password)
+    password_bytes = plain_password.encode("utf-8")
+    truncated_bytes = password_bytes[:MAX_BCRYPT_BYTES]
+    return pwd_context.verify(truncated_bytes, hashed_password)
 
 # JWT
 def create_access_token(data: dict, expires_delta: timedelta = None) -> str:
