@@ -16,7 +16,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from app.models.user import Base as UserBase
 import app.models.project   # Project model
 import app.models.task      # Task model
-import app.models.team      # Team model (if exists)
+import app.models.team      # Team model 
 
 # Use the same Base for all models
 Base = UserBase
@@ -31,10 +31,15 @@ if config.config_file_name is not None:
 # Target metadata for autogenerate
 target_metadata = Base.metadata
 
-# Get DATABASE_URL from .env
+# Get DATABASE_URL from .env and enforce sslmode=require if missing
 db_url = os.getenv("DATABASE_URL")
 if not db_url:
     raise ValueError("DATABASE_URL not set in .env")
+
+# Ensure sslmode=require for Alembic connections (Render/Supabase need SSL)
+if "sslmode=" not in db_url:
+    separator = '&' if '?' in db_url else '?'
+    db_url = f"{db_url}{separator}sslmode=require"
 
 
 # --- Offline migrations ---

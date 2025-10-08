@@ -9,6 +9,10 @@ import Home from "../pages/Home";
 import MemberDashboard from "../pages/Dashboard/MemberDashboard";
 import OwnerDashboard from "../pages/Dashboard/OwnerDashboard";
 import AdminDashboard from "../pages/Dashboard/AdminDashboard";
+import AdminUsers from "../pages/Dashboard/AdminUsers";
+import AdminProjects from "../pages/Dashboard/AdminProjects";
+import AdminTeams from "../pages/Dashboard/AdminTeams";
+import AdminTasks from "../pages/Dashboard/AdminTasks";
 import NotFound from "../pages/NotFound";
 
 // -------------------- Helpers --------------------
@@ -97,6 +101,42 @@ function InnerRoutes() {
           element={
             <ProtectedRoute user={user} requiredRole="admin">
               <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedRoute user={user} requiredRole="admin">
+              <AdminUsers />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/projects"
+          element={
+            <ProtectedRoute user={user} requiredRole="admin">
+              <AdminProjects />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/teams"
+          element={
+            <ProtectedRoute user={user} requiredRole="admin">
+              <AdminTeams />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/tasks"
+          element={
+            <ProtectedRoute user={user} requiredRole="admin">
+              <AdminTasks />
             </ProtectedRoute>
           }
         />
