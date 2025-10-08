@@ -50,16 +50,26 @@ def send_email(subject: str, recipients: list[str], body: str):
                 print("❌ Email disabled: SMTP_USER_PROD/SMTP_PASS_PROD missing. Skipping send.")
                 return
             context = ssl.create_default_context()
+            print(f"[EMAIL DEBUG] Connecting to {SMTP_HOST}:{SMTP_PORT}")
             with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+                print(f"[EMAIL DEBUG] Connected, starting TLS")
                 server.ehlo()
                 server.starttls(context=context)
                 server.ehlo()
+                print(f"[EMAIL DEBUG] TLS started, logging in as {SMTP_USER}")
                 server.login(SMTP_USER, SMTP_PASS)
+                print(f"[EMAIL DEBUG] Login successful, sending message")
                 server.send_message(msg)
-                print(f"[PROD] Email sent to {recipients}")
+                print(f"[PROD] Email sent successfully to {recipients}")
 
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"❌ SMTP Authentication failed: {e}")
+        print(f"[EMAIL DEBUG] Check if Gmail app password is correct and 2FA is enabled")
+    except smtplib.SMTPException as e:
+        print(f"❌ SMTP error: {e}")
     except Exception as e:
         print(f"❌ Email send error to {recipients}: {e}")
+        print(f"[EMAIL DEBUG] Error type: {type(e).__name__}")
 
 
 # ----------------- TASK EMAILS -----------------

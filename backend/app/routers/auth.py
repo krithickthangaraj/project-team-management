@@ -6,6 +6,7 @@ from app.core.database import get_db
 from app.models.user import User
 from app.schemas.user_schema import UserCreate, UserResponse
 from app.utils.auth_utils import hash_password, verify_password, create_access_token
+from app.services.email_service import send_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -59,3 +60,20 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             "role": db_user.role,
         },
     }
+
+
+# ---------------- TEST EMAIL ----------------
+@router.post("/test-email")
+def test_email(email: str = "krithick18112004@gmail.com"):
+    """
+    Test email sending functionality.
+    """
+    try:
+        send_email(
+            subject="Test Email from Project Team Management",
+            recipients=[email],
+            body="<h3>Test Email</h3><p>This is a test email to verify SMTP configuration.</p>"
+        )
+        return {"message": f"Test email sent to {email}. Check logs for details."}
+    except Exception as e:
+        return {"error": f"Failed to send test email: {str(e)}"}
