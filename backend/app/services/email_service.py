@@ -2,6 +2,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from decouple import config
+import ssl
 
 # ----------------- ENVIRONMENT CONFIG -----------------
 ENVIRONMENT = config("ENVIRONMENT", default="dev").lower()
@@ -18,7 +19,7 @@ else:
     SMTP_HOST = config("SMTP_HOST_PROD", default="smtp.gmail.com")
     SMTP_PORT = int(config("SMTP_PORT_PROD", default=587))
     SMTP_USER = config("SMTP_USER_PROD", default="krithickt.18@gmail.com")
-    SMTP_PASS = config("SMTP_PASS_PROD")  # use Gmail App Password
+    SMTP_PASS = config("SMTP_PASS_PROD", default="")  # Gmail App Password required in prod
     DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL_PROD", default=SMTP_USER)
 
 
@@ -36,13 +37,19 @@ def send_email(subject: str, recipients: list[str], body: str):
 
         if ENVIRONMENT == "dev":
             # Local MailHog - capture emails
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
                 server.send_message(msg)
                 print(f"[DEV] Email captured by MailHog for {recipients}")
         else:
             # Gmail SMTP - real send
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-                server.starttls()
+            if not SMTP_USER or not SMTP_PASS:
+                print("❌ Email disabled: SMTP_USER_PROD/SMTP_PASS_PROD missing. Skipping send.")
+                return
+            context = ssl.create_default_context()
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+                server.ehlo()
+                server.starttls(context=context)
+                server.ehlo()
                 server.login(SMTP_USER, SMTP_PASS)
                 server.send_message(msg)
                 print(f"[PROD] Email sent to {recipients}")
