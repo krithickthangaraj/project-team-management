@@ -16,6 +16,7 @@ app = FastAPI(title="Project Team Management")
 default_origins = [
     "http://localhost:5173",
     "https://project-team-frontend.vercel.app",
+    "https://project-frontend-git-feature-owner-75d88f-krithick-ts-projects.vercel.app",
 ]
 
 extra_origins = os.getenv("CORS_ALLOW_ORIGINS", "").split(",") if os.getenv("CORS_ALLOW_ORIGINS") else []
