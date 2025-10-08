@@ -21,7 +21,14 @@ default_origins = [
 extra_origins = os.getenv("CORS_ALLOW_ORIGINS", "").split(",") if os.getenv("CORS_ALLOW_ORIGINS") else []
 allow_origins = [o.strip() for o in (default_origins + extra_origins) if o.strip()]
 
-allow_origin_regex = os.getenv("CORS_ALLOW_ORIGIN_REGEX")
+allow_origin_regex = os.getenv("CORS_ALLOW_ORIGIN_REGEX") or r"^https://.*\\.vercel\\.app$"
+
+# Allow all origins toggle (useful for previews/debug) - caution in production
+cors_allow_all = os.getenv("CORS_ALLOW_ALL", "false").lower() in ["1", "true", "yes"]
+if cors_allow_all:
+    allow_origin_regex = ".*"
+    # and clear explicit list to avoid conflicts
+    allow_origins = []
 
 app.add_middleware(
     CORSMiddleware,
