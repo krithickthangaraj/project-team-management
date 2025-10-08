@@ -1,5 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 # Routers
 from app.routers import auth, users, tasks, teams
@@ -12,14 +13,17 @@ from app.services.websocket_manager import manager
 app = FastAPI(title="Project Team Management")
 
 # ----------------- CORS -----------------
-origins = [
+default_origins = [
     "http://localhost:5173",
-    "https://project-team-frontend.vercel.app"
+    "https://project-team-frontend.vercel.app",
 ]
+
+extra_origins = os.getenv("CORS_ALLOW_ORIGINS", "").split(",") if os.getenv("CORS_ALLOW_ORIGINS") else []
+allow_origins = [o.strip() for o in (default_origins + extra_origins) if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
