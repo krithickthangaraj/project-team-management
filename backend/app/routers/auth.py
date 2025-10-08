@@ -17,13 +17,14 @@ def register(user: UserCreate, db: Session = Depends(get_db)) -> User:
     Register a new user.
     Role defaults to 'member' if not provided.
     """
-    existing_user = db.query(User).filter(User.email == user.email).first()
+    normalized_email = user.email.strip().lower()
+    existing_user = db.query(User).filter(User.email == normalized_email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
     new_user = User(
         name=user.name,
-        email=user.email,
+        email=normalized_email,
         hashed_password=hash_password(user.password),
         role=user.role or "member",
     )
@@ -40,7 +41,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     """
     Login user and return JWT access token + user info.
     """
-    db_user = db.query(User).filter(User.email == form_data.username).first()
+    input_email = form_data.username.strip().lower()
+    db_user = db.query(User).filter(User.email == input_email).first()
 
     if not db_user or not verify_password(form_data.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
