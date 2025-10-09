@@ -19,7 +19,7 @@ if ENVIRONMENT == "dev":
 else:
     # ===== Production: SendGrid =====
     SENDGRID_API_KEY = config("SENDGRID_API_KEY", default="")
-    DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL_PROD", default="krithickt.18@gmail.com")
+    DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL_PROD", default="krithickt.22it@kongu.edu")
 
 
 # ----------------- GENERIC EMAIL FUNCTION -----------------
