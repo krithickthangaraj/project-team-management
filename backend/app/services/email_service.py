@@ -3,6 +3,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from decouple import config
 import ssl
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 # ----------------- ENVIRONMENT CONFIG -----------------
 ENVIRONMENT = config("ENVIRONMENT", default="dev").lower()
@@ -15,56 +17,51 @@ if ENVIRONMENT == "dev":
     SMTP_PASS = config("SMTP_PASS", default="")
     DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="admin@local.dev")
 else:
-    # ===== Production: Gmail SMTP =====
-    SMTP_HOST = config("SMTP_HOST_PROD", default="smtp.gmail.com")
-    SMTP_PORT = int(config("SMTP_PORT_PROD", default=587))
-    SMTP_USER = config("SMTP_USER_PROD", default="krithickt.18@gmail.com")
-    SMTP_PASS = config("SMTP_PASS_PROD", default="")  # Gmail App Password required in prod
-    DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL_PROD", default=SMTP_USER)
+    # ===== Production: SendGrid =====
+    SENDGRID_API_KEY = config("SENDGRID_API_KEY", default="")
+    DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL_PROD", default="krithickt.18@gmail.com")
 
 
 # ----------------- GENERIC EMAIL FUNCTION -----------------
 def send_email(subject: str, recipients: list[str], body: str):
     """
-    Send an email through MailHog (dev) or Gmail SMTP (prod).
+    Send an email through MailHog (dev) or SendGrid (prod).
     """
     print(f"[EMAIL DEBUG] Attempting to send email to {recipients}")
     print(f"[EMAIL DEBUG] Environment: {ENVIRONMENT}")
-    print(f"[EMAIL DEBUG] SMTP_USER: {SMTP_USER if ENVIRONMENT != 'dev' else 'N/A'}")
-    print(f"[EMAIL DEBUG] SMTP_PASS set: {'Yes' if SMTP_PASS else 'No'}")
+    
     try:
-        msg = MIMEMultipart()
-        msg["From"] = DEFAULT_FROM_EMAIL
-        msg["To"] = ", ".join(recipients)
-        msg["Subject"] = subject
-        msg.attach(MIMEText(body, "html"))
-
         if ENVIRONMENT == "dev":
             # Local MailHog - capture emails
+            msg = MIMEMultipart()
+            msg["From"] = DEFAULT_FROM_EMAIL
+            msg["To"] = ", ".join(recipients)
+            msg["Subject"] = subject
+            msg.attach(MIMEText(body, "html"))
+            
             with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
                 server.send_message(msg)
                 print(f"[DEV] Email captured by MailHog for {recipients}")
         else:
-            # Gmail SMTP - real send
-            if not SMTP_USER or not SMTP_PASS:
-                print("❌ Email disabled: SMTP_USER_PROD/SMTP_PASS_PROD missing. Skipping send.")
+            # Production: SendGrid
+            if not SENDGRID_API_KEY:
+                print("❌ Email disabled: SENDGRID_API_KEY missing. Skipping send.")
                 return
-            context = ssl.create_default_context()
-            print(f"[EMAIL DEBUG] Connecting to {SMTP_HOST}:{SMTP_PORT}")
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
-                print(f"[EMAIL DEBUG] Connected, starting TLS")
-                server.ehlo()
-                server.starttls(context=context)
-                server.ehlo()
-                print(f"[EMAIL DEBUG] TLS started, logging in as {SMTP_USER}")
-                server.login(SMTP_USER, SMTP_PASS)
-                print(f"[EMAIL DEBUG] Login successful, sending message")
-                server.send_message(msg)
-                print(f"[PROD] Email sent successfully to {recipients}")
+                
+            print(f"[EMAIL DEBUG] Using SendGrid for production email")
+            sg = SendGridAPIClient(api_key=SENDGRID_API_KEY)
+            
+            for recipient in recipients:
+                message = Mail(
+                    from_email=DEFAULT_FROM_EMAIL,
+                    to_emails=recipient,
+                    subject=subject,
+                    html_content=body
+                )
+                
+                response = sg.send(message)
+                print(f"[PROD] Email sent successfully to {recipient} via SendGrid (Status: {response.status_code})")
 
-    except smtplib.SMTPAuthenticationError as e:
-        print(f"❌ SMTP Authentication failed: {e}")
-        print(f"[EMAIL DEBUG] Check if Gmail app password is correct and 2FA is enabled")
     except smtplib.SMTPException as e:
         print(f"❌ SMTP error: {e}")
     except Exception as e:
