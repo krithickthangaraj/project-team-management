@@ -113,6 +113,27 @@ async def get_all_tasks(
 
     return query.all()
 
+
+# ---------------- GET PROJECT TASKS (FOR OWNERS) ----------------
+@router.get("/project/{project_id}", response_model=List[TaskResponse])
+async def get_project_tasks(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all tasks for a specific project (owner access)."""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Verify owner access
+    if current_user.role == "owner" and project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this project's tasks")
+    elif current_user.role not in ["admin", "owner"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    return db.query(Task).filter(Task.project_id == project_id).all()
+
 # ---------------- GET SINGLE TASK ----------------
 @router.get("/{task_id}", response_model=TaskResponse)
 async def get_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

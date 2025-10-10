@@ -75,6 +75,20 @@ def list_projects(
     )
 
 
+# ---------------- READ OTHER PROJECTS (FOR COLLABORATION) ----------------
+@router.get("/collaboration", response_model=List[ProjectResponse])
+def get_collaboration_projects(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> List[Project]:
+    """Get other projects for collaboration context (read-only for owners)."""
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Only owners can access collaboration projects")
+    
+    # Get all projects except the ones owned by the current user
+    return db.query(Project).filter(Project.owner_id != current_user.id).all()
+
+
 # ---------------- READ SINGLE PROJECT ----------------
 @router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(

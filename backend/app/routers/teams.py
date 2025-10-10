@@ -156,3 +156,103 @@ def list_teams(
         .all()
     )
     return [serialize(t) for t in teams]
+
+
+# ---------------- GET PROJECT TEAMS (FOR OWNERS) ----------------
+@router.get("/project/{project_id}", response_model=List[TeamResponse])
+def get_project_teams(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> List[Team]:
+    """Get all teams for a specific project (owner access)."""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Verify owner access
+    if current_user.role == "owner" and project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this project's teams")
+    elif current_user.role not in ["admin", "owner"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    def serialize(team: Team) -> TeamResponse:
+        return TeamResponse(
+            id=team.id,
+            name=team.name,
+            project_id=team.project_id,
+            owner_id=team.owner_id,
+            member_ids=[m.id for m in team.members],
+        )
+    
+    teams = db.query(Team).filter(Team.project_id == project_id).all()
+    return [serialize(t) for t in teams]
+
+
+# ---------------- GET PROJECT MEMBERS (FOR OWNERS) ----------------
+@router.get("/project/{project_id}/members", response_model=List[dict])
+def get_project_members(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get all members of a project (from teams) for owners."""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Verify owner access
+    if current_user.role == "owner" and project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this project's members")
+    elif current_user.role not in ["admin", "owner"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get all teams in this project
+    teams = db.query(Team).filter(Team.project_id == project_id).all()
+    
+    members = []
+    for team in teams:
+        for member in team.members:
+            members.append({
+                "id": member.id,
+                "name": member.name,
+                "email": member.email,
+                "role": member.role,
+                "team_id": team.id,
+                "team_name": team.name
+            })
+    
+    return members
+
+
+# ---------------- GET AVAILABLE USERS (FOR OWNERS) ----------------
+@router.get("/project/{project_id}/available-users", response_model=List[dict])
+def get_available_users(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get all users available to be added to the project."""
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Verify owner access
+    if current_user.role == "owner" and project.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this project")
+    elif current_user.role not in ["admin", "owner"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get all users who are not already in this project
+    existing_member_ids = db.query(team_members.c.user_id)\
+        .join(Team, Team.id == team_members.c.team_id)\
+        .filter(Team.project_id == project_id)\
+        .all()
+    
+    existing_ids = [row[0] for row in existing_member_ids]
+    
+    available_users = db.query(User)\
+        .filter(User.id.notin_(existing_ids), User.role == "member")\
+        .all()
+    
+    return [{"id": user.id, "name": user.name, "email": user.email} for user in available_users]

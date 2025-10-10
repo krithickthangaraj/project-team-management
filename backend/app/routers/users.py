@@ -55,6 +55,15 @@ def list_users(db: Session = Depends(get_db)) -> List[User]:
     return db.query(User).all()
 
 
+# ---------------- LIST USERS FOR OWNERS ----------------
+@router.get("/members", response_model=List[UserResponse], dependencies=[Depends(require_role("owner"))])
+def list_member_users(db: Session = Depends(get_db)) -> List[User]:
+    """
+    List all member users for owners to assign tasks.
+    """
+    return db.query(User).filter(User.role == "member").all()
+
+
 # ---------------- UPDATE USER ROLE (ADMIN ONLY) ----------------
 @router.patch("/{user_id}/role", response_model=UserResponse, dependencies=[Depends(require_role("admin"))])
 def update_user_role(
