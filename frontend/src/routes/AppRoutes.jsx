@@ -7,6 +7,9 @@ import Login from "../pages/Auth/Login";
 import Register from "../pages/Auth/Register";
 import Home from "../pages/Home";
 import MemberDashboard from "../pages/Dashboard/MemberDashboard";
+import MemberTasks from "../pages/Dashboard/MemberTasks";
+import MemberProjects from "../pages/Dashboard/MemberProjects";
+import MemberTeams from "../pages/Dashboard/MemberTeams";
 import OwnerDashboard from "../pages/Dashboard/OwnerDashboard";
 import OwnerProjects from "../pages/Dashboard/OwnerProjects";
 import OwnerProjectDetail from "../pages/Dashboard/OwnerProjectDetail";
@@ -88,6 +91,33 @@ function InnerRoutes() {
           element={
             <ProtectedRoute user={user} requiredRole="member">
               <MemberDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/member/tasks"
+          element={
+            <ProtectedRoute user={user} requiredRole="member">
+              <MemberTasks />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/member/projects"
+          element={
+            <ProtectedRoute user={user} requiredRole="member">
+              <MemberProjects />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/member/teams"
+          element={
+            <ProtectedRoute user={user} requiredRole="member">
+              <MemberTeams />
             </ProtectedRoute>
           }
         />
