@@ -12,6 +12,7 @@ venv/
 
 # Environment variables
 .env
+ENVIRONMENT_VARIABLES.md
 
 # Alembic migration cache
 *.pyc

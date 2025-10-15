@@ -8,6 +8,11 @@ import Register from "../pages/Auth/Register";
 import Home from "../pages/Home";
 import MemberDashboard from "../pages/Dashboard/MemberDashboard";
 import OwnerDashboard from "../pages/Dashboard/OwnerDashboard";
+import OwnerProjects from "../pages/Dashboard/OwnerProjects";
+import OwnerProjectDetail from "../pages/Dashboard/OwnerProjectDetail";
+import OwnerTeams from "../pages/Dashboard/OwnerTeams";
+import OwnerTasks from "../pages/Dashboard/OwnerTasks";
+import OwnerCollaboration from "../pages/Dashboard/OwnerCollaboration";
 import AdminDashboard from "../pages/Dashboard/AdminDashboard";
 import AdminUsers from "../pages/Dashboard/AdminUsers";
 import AdminProjects from "../pages/Dashboard/AdminProjects";
@@ -92,6 +97,51 @@ function InnerRoutes() {
           element={
             <ProtectedRoute user={user} requiredRole="owner">
               <OwnerDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/projects"
+          element={
+            <ProtectedRoute user={user} requiredRole="owner">
+              <OwnerProjects />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/projects/:projectId"
+          element={
+            <ProtectedRoute user={user} requiredRole="owner">
+              <OwnerProjectDetail />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/teams"
+          element={
+            <ProtectedRoute user={user} requiredRole="owner">
+              <OwnerTeams />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/tasks"
+          element={
+            <ProtectedRoute user={user} requiredRole="owner">
+              <OwnerTasks />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/owner/collaboration"
+          element={
+            <ProtectedRoute user={user} requiredRole="owner">
+              <OwnerCollaboration />
             </ProtectedRoute>
           }
         />
